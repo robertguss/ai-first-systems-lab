@@ -172,12 +172,9 @@ version’s exact bytes are retained for swap-back; `Regenerator.Loader.load/1` 
 the low-level tested primitive. There is no Mode B provisional-state manager or
 automatic swap-back policy yet.
 
-For measures, join a successful `load_verified` to its bundle ID (following
-`parent_id` for ruling/retry attempts). Recovery time is verification time minus
-the original `first_failure_at`; `request_failed` events between those points
-give failed requests. Signature counts isolate the affected failure; global
-counts include other simultaneous incidents. Unresolved cases are censored, not
-zero-time recoveries. Keep the whole run directory for later replay.
+Keep the whole run directory for later replay and results analysis. The
+summarizer below follows `parent_id` to group ruling/retry attempts under the
+original incident; a retry does not reset the recovery clock.
 
 These are append-only application writes, not tamper-proof storage against the
 host operator. Storage errors remain visible and prevent unlogged approvals;
@@ -185,6 +182,58 @@ requests continue, but metrics are incomplete from that point. Run on disposable
 local data. Restarting the VM starts a new run with baseline code; runtime state
 is not recovered from the audit log. Human contract rulings persist in the
 contract file, so preserve a fresh checkout if you want a fresh baseline trial.
+
+## Summarize saved runs
+
+From this experiment directory, supply one or more saved run directories:
+
+```sh
+mix compile
+mix results /path/to/saved-run
+mix results run/*
+mix results --json /path/to/first-run /path/to/second-run > results.json
+```
+
+Compile before redirecting JSON so Mix compilation messages do not enter the
+export. The command does not start the application, invoke agents, load code,
+read the secret manifest, or change run evidence. It needs only `events.jsonl`
+and the referenced `<id>.bundle.json` files. Original absolute paths are
+ignored, so whole run directories can be copied from the trial machine. Bundle
+symlinks are not followed. JSON has `schema_version: 1` and a `runs` array;
+results remain per-run rather than pooling potentially different trial
+conditions.
+
+The report includes observed failed/successful/expected-rejection request
+counts, alarms, attempts, proposal kinds, review statuses and completed
+verdicts, human decisions, loads, failed loads, and failed verification. These
+are event counts, not percentages of unique proposals or measures of model
+quality.
+
+- **Recovery:** the first successful `load_verified` with a matching prior
+  approval and load (same candidate hash). `recovery_ms` uses monotonic
+  `elapsed_ms`, from the original signature's first logged failure to this
+  verification, not wall-clock timestamps. An approval or load alone is not
+  recovery. Mean/median include only recovered incidents; `sample_count` gives
+  their denominator.
+- **Unresolved:** `recovery_ms` is null; `censored_after_ms` measures from first
+  failure through the last recorded event. This is an observation duration, not
+  a recovery time or the time since the process exited.
+- **Failed requests:** per-incident counts include its signature up to recovery
+  (or through the snapshot if unresolved). Run totals include all signatures,
+  including failures below the alarm threshold. Verification probes are not
+  customer requests and are counted separately.
+- **Evidence warnings:** malformed/truncated records, sequence/counter
+  mismatches, missing bundles, invalid lineage, and unmatched verified loads
+  mark a run `incomplete_or_inconsistent`. Conservatively, all
+  recovery/censoring durations for that run are withheld. Observed counts remain
+  available; malformed events and duplicate sequence records are excluded, so
+  these are not complete totals.
+
+Even a `consistent_snapshot` is not proof of a finished or fully captured trial:
+the current logger has no end-of-run marker, and an unrecorded tail cannot be
+detected. Prefer stopped runs; copying an active run can race with evidence
+writes. The summary checks logged evidence, not candidate correctness, sustained
+recovery, or tamper resistance. No Phase 2 rollback analysis is implemented.
 
 ## Verification and limitations
 
