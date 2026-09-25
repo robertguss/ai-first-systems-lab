@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import repair
 import sandbox
@@ -57,6 +58,15 @@ Path("response.json").write_text(json.dumps(response))
 
 
 class CopyTests(unittest.TestCase):
+    def test_default_auth_selects_oauth_without_forwarding_both_credentials(self):
+        with patch.dict(os.environ, {"CLAUDE_CODE_OAUTH_TOKEN": "synthetic", "ANTHROPIC_API_KEY": "synthetic-api"}, clear=True):
+            self.assertEqual(repair.default_credential_env(), ["CLAUDE_CODE_OAUTH_TOKEN"])
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "synthetic-api"}, clear=True):
+            self.assertEqual(repair.default_credential_env(), ["ANTHROPIC_API_KEY"])
+        args = repair.parser().parse_args(["--workspace", ".", "--bundle", "incident.json",
+                                          "--output", "proposal", "--scope", "narrow"])
+        self.assertNotIn("--bare", args.command_json)
+
     def test_excludes_metadata_secrets_instructions_and_symlinks_recursively(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -110,6 +120,7 @@ assert not pathlib.Path('/home/user').exists()
 assert not pathlib.Path('/etc/passwd').exists()
 assert list(pathlib.Path('/usr/local').iterdir()) == []
 assert 'ANTHROPIC_API_KEY' not in os.environ
+assert 'CLAUDE_CODE_OAUTH_TOKEN' not in os.environ
 assert 'HOME' in os.environ and os.environ['HOME'] == '/home/agent'
 assert not pathlib.Path('/bridge/proxy.sock').exists()
 try:

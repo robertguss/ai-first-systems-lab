@@ -15,8 +15,9 @@ Mix dependencies are used. Missing namespace support fails closed; there is no
 directory-only mode.
 
 The default command is
-`claude --print --bare --permission-mode bypassPermissions --no-session-persistence`.
-The entire Claude process (including tools) runs inside Bubblewrap.
+`claude --print --permission-mode bypassPermissions --no-session-persistence`.
+The entire Claude process (including tools) runs inside Bubblewrap. `--bare` is
+omitted because it disables Claude Code's OAuth authentication.
 `--command-json '["executable","arg"]'` and
 `--reviewer-command-json '["executable","arg"]'` replace executable argv. The
 runner appends the stage prompt as the **final argument**. Executables must
@@ -37,12 +38,13 @@ HOME, repository, git history, host `/proc`, output evidence, and other host
 paths are absent. `/usr/local` is masked with an empty read-only mount, not
 exposed as host tools. Only `/opt/regenerator-tools` is mounted from `/opt`.
 
-Only agents receive `ANTHROPIC_API_KEY`, if present. Repeat
-`--credential-env NAME` to explicitly replace that list with other uppercase
-provider KEY/TOKEN variables. Tests, compilation, validation and probes receive
-**no credentials and no network**. Agents have no direct network; their local
-HTTPS proxy relays to a host Unix socket. The host permits CONNECT only to
-`api.anthropic.com:443`. Repeat `--provider-host HOST` to replace that
+Only agents receive the selected credential: `CLAUDE_CODE_OAUTH_TOKEN` when
+configured, otherwise `ANTHROPIC_API_KEY`. They never receive both by default.
+Repeat `--credential-env NAME` to explicitly replace that list with other
+uppercase provider KEY/TOKEN variables. Tests, compilation, validation and
+probes receive **no credentials and no network**. Agents have no direct network;
+their local HTTPS proxy relays to a host Unix socket. The host permits CONNECT
+only to `api.anthropic.com:443`. Repeat `--provider-host HOST` to replace that
 allowlist. No wildcard or other port is supported. A configured CLI must honor
 HTTPS_PROXY; unsupported providers fail rather than gain host network. Do not
 allow untrusted proxy destinations: the model credential is intentionally

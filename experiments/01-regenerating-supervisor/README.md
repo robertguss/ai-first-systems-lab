@@ -29,8 +29,8 @@ python3 -m unittest discover -s scripts -p 'test_*.py' -v
 mix run --no-start -e 'Regenerator.CLI.main(System.argv())' -- \
   --no-auto-repair --rate 10 --seed 42 --actor robert
 
-# Normal run: configure ANTHROPIC_API_KEY securely in your environment first.
-# The runner forwards only this provider key, not your general environment.
+# Normal run: configure CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY securely.
+# The runner forwards only the selected credential, not your general environment.
 mix run --no-start -e 'Regenerator.CLI.main(System.argv())' -- \
   --rate 10 --seed 42 --actor robert
 ```
@@ -85,9 +85,15 @@ Default regeneration uses Claude Code headless inside an OS sandbox. To choose
 models/commands, supply JSON argv arrays (no shell evaluation):
 
 ```sh
-export REGEN_AGENT_COMMAND='["claude","--print","--bare","--model","sonnet","--permission-mode","bypassPermissions","--no-session-persistence"]'
-export REGEN_REVIEWER_COMMAND='["claude","--print","--bare","--model","opus","--permission-mode","bypassPermissions","--no-session-persistence"]'
+export REGEN_AGENT_COMMAND='["claude","--print","--model","sonnet","--permission-mode","bypassPermissions","--no-session-persistence"]'
+export REGEN_REVIEWER_COMMAND='["claude","--print","--model","opus","--permission-mode","bypassPermissions","--no-session-persistence"]'
 ```
+
+OAuth takes precedence when `CLAUDE_CODE_OAUTH_TOKEN` is set; otherwise the
+runner uses `ANTHROPIC_API_KEY`. Generate a subscription token with
+`claude setup-token`, then store it securely as the OAuth environment variable.
+Do not add `--bare` when using OAuth: Claude Code disables OAuth in that mode.
+Isolation still comes from Bubblewrap, a fresh HOME, and sanitized workspaces.
 
 The stage prompt is appended as the final argument. Use genuinely different
 models for meaningful independent review. With no reviewer command, the card

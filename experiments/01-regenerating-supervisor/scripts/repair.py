@@ -417,13 +417,20 @@ def argv_json(value):
     return result
 
 
+def default_credential_env():
+    # Forward one authentication method, never the general host environment.
+    if os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        return ["CLAUDE_CODE_OAUTH_TOKEN"]
+    return ["ANTHROPIC_API_KEY"]
+
+
 def parser():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--workspace", type=Path, required=True)
     cli.add_argument("--bundle", type=Path, required=True)
     cli.add_argument("--output", type=Path, required=True)
     cli.add_argument("--scope", choices=["narrow", "broad"], required=True)
-    cli.add_argument("--command-json", type=argv_json, default=["claude", "--print", "--bare",
+    cli.add_argument("--command-json", type=argv_json, default=["claude", "--print",
                      "--permission-mode", "bypassPermissions", "--no-session-persistence"])
     cli.add_argument("--reviewer-command-json", type=argv_json)
     cli.add_argument("--provider-host", action="append", default=None,
@@ -438,7 +445,7 @@ def parser():
 def main():
     args = parser().parse_args()
     args.provider_host = args.provider_host or ["api.anthropic.com"]
-    args.credential_env = args.credential_env or ["ANTHROPIC_API_KEY"]
+    args.credential_env = args.credential_env or default_credential_env()
     if any(not re.fullmatch(r"[A-Z][A-Z0-9_]*(?:KEY|TOKEN)", key)
            for key in args.credential_env):
         raise SystemExit("credential names must be explicit uppercase KEY or TOKEN variables")
