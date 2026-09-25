@@ -1,0 +1,6 @@
+.amp/
+**/_build/
+**/deps/
+**/run/
+**/__pycache__/
+erl_crash.dump

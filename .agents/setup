@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tools=/opt/regenerator-tools
+if ! command -v bwrap >/dev/null; then
+  sudo apt-get update -qq
+  sudo apt-get install -y bubblewrap
+fi
+sudo mkdir -p "$tools"
+sudo chown "$(id -u):$(id -g)" "$tools"
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+otp="$tools/.elixir-install/installs/otp/29.1.1"
+if [[ ! -x "$otp/bin/erl" ]]; then
+  # The Ubuntu 22.04 build uses glibc/SSL versions compatible with Debian 12.
+  curl -fsSL https://builds.hex.pm/builds/otp/amd64/ubuntu-22.04/OTP-29.1.1.tar.gz -o "$scratch/otp.tar.gz"
+  mkdir -p "$otp"
+  tar xzf "$scratch/otp.tar.gz" --strip-components 1 -C "$otp"
+  (cd "$otp" && ./Install -sasl "$otp")
+fi
+if [[ ! -x "$tools/.elixir-install/installs/elixir/1.20.4-otp-29/bin/elixir" ]]; then
+  curl -fsSL https://github.com/elixir-lang/elixir/releases/download/v1.20.4/elixir-otp-29.zip -o "$scratch/elixir.zip"
+  mkdir -p "$tools/.elixir-install/installs/elixir/1.20.4-otp-29"
+  unzip -qo "$scratch/elixir.zip" -d "$tools/.elixir-install/installs/elixir/1.20.4-otp-29"
+fi
+mkdir -p "$tools/bin"
+for binary in erl erlc escript; do
+  ln -sfn "$tools/.elixir-install/installs/otp/29.1.1/bin/$binary" "$tools/bin/$binary"
+done
+for binary in elixir elixirc iex mix; do
+  ln -sfn "$tools/.elixir-install/installs/elixir/1.20.4-otp-29/bin/$binary" "$tools/bin/$binary"
+done
+if [[ ! -x "$tools/node_modules/.bin/claude" ]]; then
+  npm install --prefix "$tools" @anthropic-ai/claude-code@2.1.282
+fi
+ln -sfn "$tools/node_modules/.bin/claude" "$tools/bin/claude"
+for binary in erl erlc escript elixir elixirc iex mix claude; do
+  sudo ln -sfn "$tools/bin/$binary" "/usr/local/bin/$binary"
+done
+elixir --version
