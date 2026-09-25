@@ -10,6 +10,11 @@ contract policy. Ground truth and an operator-only detection audit live under
 review agent. The baseline tests intentionally cover only established examples;
 passing them does not mean the entire shipping contract is implemented.
 
+For trials on another machine, use the operator-only
+[trial-agent handoff](experiment/TRIAL_HANDOFF.md). It includes the agent
+prompt, preflight, human decision gates, trial record, and archival procedure.
+Do not provide it to repair or review models.
+
 ## Run
 
 Requirements: Linux with unprivileged user/mount/PID/network namespaces,
